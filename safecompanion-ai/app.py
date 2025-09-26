@@ -6,29 +6,29 @@ import spacy
 from transformers import pipeline
 from dotenv import load_dotenv
 
-# Load environment variables
+
 load_dotenv()
 
 st.set_page_config(page_title="SafeCompanion.AI", page_icon="🛡️")
 st.title("🛡️ SafeCompanion.AI Prototype")
 
-# --- Load spaCy model for PII detection ---
+
 nlp = spacy.load("en_core_web_sm")
 
-# --- Use Flan-T5 (instruction-tuned, safer for demos) ---
+
 generator = pipeline("text2text-generation", model="google/flan-t5-base")
 
-# --- Safety Classifiers ---
+
 toxicity_check = Detoxify("original")
 
-# --- Crisis Keywords ---
+
 CRISIS_KEYWORDS = [
     "worthless", "suicide", "kill myself",
     "end my life", "harm myself", "self harm",
     "depressed", "i want to die"
 ]
 
-# --- Helper functions ---
+
 PROFANITY_WORDS = ["badword", "fuck", "shit", "bitch"]
 
 def contains_profanity(text: str) -> bool:
@@ -59,11 +59,11 @@ def scrub_pii(text: str) -> (str, bool):
 
 def clean_response(text: str) -> str:
     """Clean AI output: remove spammy symbols, links, and repetitions"""
-    text = re.sub(r"[\:\)\]\(]{2,}", " ", text)       # Remove symbol spam
-    text = re.sub(r"\d{4,}", "", text)                # Remove digit spam
-    text = re.sub(r"http\S+|www\.\S+", "", text)      # Remove hallucinated links
+    text = re.sub(r"[\:\)\]\(]{2,}", " ", text)      
+    text = re.sub(r"\d{4,}", "", text)                
+    text = re.sub(r"http\S+|www\.\S+", "", text)      
     text = re.sub(r"address\:.*", "", text)
-    text = re.sub(r"([!?.])\1{2,}", r"\1", text)      # Collapse punctuation
+    text = re.sub(r"([!?.])\1{2,}", r"\1", text)     
 
     sentences = re.split(r'(?<=[.!?]) +', text)
     sentences = [s.strip() for s in sentences if len(s.strip()) > 2]
@@ -90,18 +90,18 @@ def ask_ai(prompt: str) -> str:
     except Exception as e:
         return f"⚠️ AI model error: {str(e)}"
 
-# --- UI with guardrails (adjust, not replace) ---
+
 user_input = st.text_input("Enter your message:")
 
 if user_input:
     clean_input, pii_flag = scrub_pii(user_input)
     ai_response = ask_ai(clean_input)
 
-    # Fallback for nonsense
+   
     if not ai_response or len(ai_response.split()) < 3:
         ai_response = "I'm here to chat with you. How are you feeling today?"
 
-    # Adjust responses with guardrails
+    
     if contains_profanity(user_input):
         ai_response = "⚠️ I noticed some harsh language. Let's try to keep things kind 🙂. " + ai_response
 
