@@ -116,6 +116,6 @@ if user_input:
     if pii_flag:
         ai_response = "ℹ️ For privacy, I’ve hidden sensitive details. " + ai_response
 
-    # Display final safe response
+   
     st.write("✅ Safe message accepted.")
     st.write("AI Response:", ai_response)
