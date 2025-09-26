@@ -99,7 +99,7 @@ This project is licensed under the **MIT License** – see the [LICENSE](LICENSE
 
 **Team CodeCrafters (VH25-20)**
 
-* Ayush Pimple (@ayushpimple10)
+* Ayush Pimple
 * Shivanshu
 * Harsh
 * Shervin
