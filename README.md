@@ -22,3 +22,24 @@ It implements guardrails such as:
    ```bash
    git clone https://github.com/ayushpimple30/safecompanion-ai.git
    cd safecompanion-ai
+
+Create and activate a virtual environment:
+
+python -m venv venv
+venv\Scripts\activate   # Windows
+source venv/bin/activate   # Mac/Linux
+
+
+Install dependencies:
+
+pip install -r requirements.txt
+
+
+Create a .env file and add your API keys:
+
+HF_API_KEY=your_huggingface_api_key
+
+
+Run the app:
+
+streamlit run app.py
