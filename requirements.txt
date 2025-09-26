@@ -1,4 +1,5 @@
-pip freeze > requirements.txt
-git add requirements.txt
-git commit -m "Added requirements.txt"
-git push
+streamlit==1.39.0
+transformers==4.44.2
+huggingface-hub==0.25.2
+torch==2.4.1
+python-dotenv==1.0.1
