@@ -1,0 +1,30 @@
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+
+# --- Virtual environments ---
+venv/
+env/
+ENV/
+.venv/
+
+# --- Environment variables / secrets ---
+.env
+
+# --- VS Code ---
+.vscode/
+*.code-workspace
+
+# --- OS-specific files ---
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+
+# --- Streamlit cache ---
+.streamlit/
