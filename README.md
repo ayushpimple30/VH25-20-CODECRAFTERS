@@ -1,7 +1,3 @@
-Perfect, Ayush 🙌 Let’s make a **polished, professional README.md** for your SafeCompanion.AI repo that hackathon judges will love. You can copy-paste this directly into a `README.md` file at the root of your project.
-
----
-
 # 🛡️ SafeCompanion.AI
 
 **SafeCompanion.AI** is an AI-powered chatbot designed to provide **safe, supportive, and responsible interactions**.
