@@ -58,7 +58,7 @@ streamlit run app.py
 
 ## 📸 Demo
 
-*(Optional: Add a screenshot of your app here)*
+<img width="1920" height="1080" alt="Screenshot (7)" src="https://github.com/user-attachments/assets/271c56b4-bd20-468d-b0fd-e34bc7fed1da" />
 
 ```markdown
 ![SafeCompanion.AI Screenshot](assets/screenshot.png)
