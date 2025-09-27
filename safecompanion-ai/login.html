@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Login - SafeCompanion.AI</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 1rem;
+        }
+
+        .login-container {
+            max-width: 450px;
+            width: 100%;
+
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            overflow: hidden;
+            animation: fadeIn 0.6s ease-in-out;
+        }
+
+        .login-form-side {
+            padding: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            color: #fff;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .form-control {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .form-control:focus {
+            background: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 0 0.2rem rgba(116, 235, 213, 0.5);
+            border-color: #74ebd5;
+            color: white;
+        }
+
+        .input-group-text {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .btn-primary {
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+        }
+
+        .register-link a {
+            color: #74ebd5;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .register-link a:hover {
+            color: #ffffff;
+            text-decoration: underline;
+        }
+
+        .btn-google {
+            background-color: #fff;
+            color: #444;
+            font-weight: 500;
+            border: 1px solid #ddd;
+            transition: all 0.3s ease;
+        }
+
+        .btn-google:hover {
+            background-color: #f8f9fa;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .divider-text {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .divider {
+            border-color: rgba(255, 255, 255, 0.3) !important;
+        }
+
+        #toggle-password {
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .login-form-side {
+                padding: 2rem;
+            }
+        }
+
+        /* Language Selector Styles */
+        .language-selector {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .language-dropdown {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            padding: 8px 12px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+
+        .language-dropdown:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .language-dropdown:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 0 2px rgba(116, 235, 213, 0.5);
+        }
+
+        .language-dropdown option {
+            background: #1a233a;
+            color: white;
+            padding: 8px;
+        }
+
+        /* RTL Support */
+        body.rtl {
+            direction: rtl;
+            text-align: right;
+        }
+
+        body.rtl .language-selector {
+            right: auto;
+            left: 20px;
+        }
+
+        body.rtl .input-group-text {
+            order: -1;
+        }
+
+        body.rtl .register-link {
+            text-align: right;
+        }
+
+        /* Loading animation for language switch */
+        .fade-transition {
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+
+        .app-title {
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body id="vanta-bg">
+    <!-- Language Selector -->
+    <div class="language-selector">
+        <select id="languageSelect" class="language-dropdown" title="Select Language" aria-label="Language Selection">
+            <option value="en">🇺🇸 English</option>
+            <option value="hi">🇮� हिन्दी</option>
+            <option value="mr">🇳 मराठी</option>
+        </select>
+    </div>
+
+    <div class="login-container">
+        <div class="login-form-side">
+            <h2 class="text-center mb-4 app-title" data-translate="app_title">SafeCompanion.AI</h2>
+
+            <form id="login-form">
+                <div class="mb-3">
+                    <input type="text" id="username" class="form-control"
+                        data-translate-placeholder="username_placeholder" placeholder="Username" required>
+                </div>
+                <div class="input-group mb-3">
+                    <input type="password" id="password" class="form-control"
+                        data-translate-placeholder="password_placeholder" placeholder="Password" required>
+                    <span class="input-group-text" id="toggle-password"><i class="fa fa-eye"></i></span>
+                </div>
+                <button type="submit" id="login-button" class="btn btn-primary w-100"
+                    data-translate="login_button">Login</button>
+            </form>
+            <div id="message" class="mt-3 text-center"></div>
+
+            <div class="d-flex align-items-center my-3">
+                <hr class="flex-grow-1 divider">
+                <span class="mx-2 divider-text" data-translate="or_text">OR</span>
+                <hr class="flex-grow-1 divider">
+            </div>
+
+            <p class="mt-3 text-center register-link">
+                <span data-translate="no_account">Don't have an account?</span>
+                <a href="register.html" data-translate="register_link">Register</a>
+            </p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+
+    <script>
+        // Multi-language translation system
+        const translations = {
+            en: {
+                app_title: "SafeCompanion.AI",
+                username_placeholder: "Username",
+                password_placeholder: "Password",
+                login_button: "Login",
+                login_loading: "Logging In...",
+                or_text: "OR",
+                no_account: "Don't have an account?",
+                register_link: "Register",
+                invalid_credentials: "Invalid username or password!",
+                direction: "ltr"
+            },
+            hi: {
+                app_title: "SafeCompanion.AI",
+                username_placeholder: "उपयोगकर्ता नाम",
+                password_placeholder: "पासवर्ड",
+                login_button: "लॉगिन करें",
+                login_loading: "लॉगिन हो रहा है...",
+                or_text: "या",
+                no_account: "कोई खाता नहीं है?",
+                register_link: "पंजीकरण करें",
+                invalid_credentials: "अमान्य उपयोगकर्ता नाम या पासवर्ड!",
+                direction: "ltr"
+            },
+            mr: {
+                app_title: "SafeCompanion.AI",
+                username_placeholder: "वापरकर्त्याचे नाव",
+                password_placeholder: "पासवर्ड",
+                login_button: "लॉगिन करा",
+                login_loading: "लॉगिन होत आहे...",
+                or_text: "किंवा",
+                no_account: "खाते नाही?",
+                register_link: "नोंदणी करा",
+                invalid_credentials: "अवैध वापरकर्ता नाव किंवा पासवर्ड!",
+                direction: "ltr"
+            }
+        };
+
+        // Current language state
+        let currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
+
+        // Translation function
+        function translatePage(language) {
+            const translation = translations[language] || translations['en'];
+
+            // Add fade transition
+            document.querySelector('.login-form-side').classList.add('fade-transition');
+
+            setTimeout(() => {
+                // Translate text content
+                document.querySelectorAll('[data-translate]').forEach(element => {
+                    const key = element.getAttribute('data-translate');
+                    if (translation[key]) {
+                        element.textContent = translation[key];
+                    }
+                });
+
+                // Translate placeholders
+                document.querySelectorAll('[data-translate-placeholder]').forEach(element => {
+                    const key = element.getAttribute('data-translate-placeholder');
+                    if (translation[key]) {
+                        element.placeholder = translation[key];
+                    }
+                });
+
+                // Set text direction for RTL languages
+                document.body.className = document.body.className.replace(/\brtl\b/g, '');
+                if (translation.direction === 'rtl') {
+                    document.body.classList.add('rtl');
+                }
+
+                // Update HTML lang attribute
+                document.documentElement.lang = language;
+
+                // Remove fade transition
+                document.querySelector('.login-form-side').classList.remove('fade-transition');
+            }, 150);
+        }
+
+        // Initialize language on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            const languageSelect = document.getElementById('languageSelect');
+            languageSelect.value = currentLanguage;
+            translatePage(currentLanguage);
+
+            // Language change handler
+            languageSelect.addEventListener('change', function () {
+                currentLanguage = this.value;
+                localStorage.setItem('preferredLanguage', currentLanguage);
+                translatePage(currentLanguage);
+            });
+        });
+    </script>
+
+    <script>
+        // Vanta.js background animation
+        VANTA.NET({
+            el: "#vanta-bg",
+            mouseControls: true,
+            touchControls: true,
+            gyroControls: false,
+            minHeight: 200.00,
+            minWidth: 200.00,
+            scale: 1.00,
+            scaleMobile: 1.00,
+            color: 0x74ebd5,
+            backgroundColor: 0x1a233a,
+            points: 10.00,
+            maxDistance: 20.00
+        })
+    </script>
+
+    <script>
+        // Login functionality
+        let users = JSON.parse(localStorage.getItem('users') || '[]');
+
+        const loginForm = document.getElementById('login-form');
+        const loginButton = document.getElementById('login-button');
+        const messageDiv = document.getElementById('message');
+
+        loginForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            loginButton.disabled = true;
+
+            // Get current translation for loading text
+            const translation = translations[currentLanguage] || translations['en'];
+            loginButton.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${translation.login_loading}`;
+            messageDiv.innerHTML = '';
+
+            setTimeout(() => {
+                const user = users.find(u => u.username === username && u.password === password);
+
+                if (!user) {
+                    messageDiv.innerHTML = `<div class="alert alert-danger">${translation.invalid_credentials}</div>`;
+                    loginButton.disabled = false;
+                    loginButton.innerHTML = translation.login_button;
+                    return;
+                }
+
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                window.location.href = "chat.html";
+            }, 500);
+        });
+
+        // Password visibility toggle
+        const togglePassword = document.getElementById('toggle-password');
+        const passwordInput = document.getElementById('password');
+        togglePassword.addEventListener('click', function () {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            this.querySelector('i').classList.toggle('fa-eye');
+            this.querySelector('i').classList.toggle('fa-eye-slash');
+        });
+
+
+
+    </script>
+</body>
+
+</html>

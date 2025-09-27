@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>SafeCompanion.AI Chat</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --user-msg-bg: var(--primary-color);
+            --bot-msg-bg: #f1f0f0;
+            --body-bg: #f4f7f9;
+            --card-bg: #ffffff;
+            --text-color: #333;
+            --light-text-color: #888;
+            --input-bg: #f8f9fa;
+            --input-border: #e0e0e0;
+            --suggestion-bg: #e9ecef;
+            --suggestion-hover-bg: #d4dae0;
+        }
+
+        body.dark-mode {
+            --primary-color: #0d6efd;
+            --user-msg-bg: var(--primary-color);
+            --bot-msg-bg: #3a3b3c;
+            --body-bg: #18191a;
+            --card-bg: #242526;
+            --text-color: #e4e6eb;
+            --light-text-color: #b0b3b8;
+            --input-bg: #3a3b3c;
+            --input-border: #4a4a4a;
+            --suggestion-bg: #4a4a4a;
+            --suggestion-hover-bg: #5a5a5a;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', sans-serif;
+            background: var(--body-bg);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 1rem;
+            transition: background-color 0.3s;
+        }
+
+        .chat-window {
+            width: 100%;
+            max-width: 800px;
+            height: 90vh;
+            max-height: 800px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: background-color 0.3s;
+        }
+
+        header {
+            background: var(--primary-color);
+            color: white;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+            transition: background-color 0.3s;
+        }
+
+        .header-left h3 {
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .header-center {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+        }
+
+        .language-selector {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: white;
+            padding: 8px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .language-selector:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .language-selector option {
+            background: var(--card-bg);
+            color: var(--text-color);
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .header-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .header-btn:hover {
+            opacity: 1;
+        }
+
+        .header-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Theme Switch Styling */
+        .theme-switcher {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .theme-switcher input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.3);
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(26px);
+        }
+
+        #chat-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message-wrapper {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            max-width: 75%;
+            animation: fadeIn 0.4s ease-out;
+            position: relative;
+        }
+
+        .message-wrapper:hover .copy-btn {
+            opacity: 1;
+        }
+
+        .message-wrapper:hover .sound-btn {
+            opacity: 1;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .user-wrapper {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .user-wrapper .avatar {
+            background: var(--user-msg-bg);
+            color: white;
+            margin-left: 10px;
+        }
+
+        .bot-wrapper .avatar {
+            background: var(--light-text-color);
+            color: white;
+            margin-right: 10px;
+        }
+
+        .message {
+            background: var(--bot-msg-bg);
+            color: var(--text-color);
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 100%;
+            word-wrap: break-word;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .user-wrapper .message {
+            background: var(--user-msg-bg);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .bot-wrapper .message {
+            border-bottom-left-radius: 4px;
+        }
+
+        .timestamp {
+            font-size: 0.75rem;
+            color: var(--light-text-color);
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        .user-wrapper .timestamp {
+            text-align: left;
+        }
+
+        .copy-btn,
+        .sound-btn {
+            position: absolute;
+            top: -5px;
+            right: -30px;
+            background: var(--suggestion-bg);
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            color: var(--text-color);
+            opacity: 0;
+            transition: opacity 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sound-btn {
+            right: -60px;
+        }
+
+        .copy-btn:hover,
+        .sound-btn:hover {
+            background: var(--suggestion-hover-bg);
+        }
+
+        .user-wrapper .copy-btn {
+            left: -30px;
+            right: auto;
+        }
+
+        .user-wrapper .sound-btn {
+            left: -60px;
+            right: auto;
+        }
+
+        .input-container {
+            padding: 20px;
+            border-top: 1px solid var(--input-border);
+            background: var(--card-bg);
+        }
+
+        #input-area {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 25px;
+            padding: 8px 15px;
+            transition: border-color 0.3s;
+        }
+
+        #input-area:focus-within {
+            border-color: var(--primary-color);
+        }
+
+        #user-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            background: transparent;
+            color: var(--text-color);
+            font-size: 16px;
+            padding: 8px 0;
+        }
+
+        #user-input:focus {
+            outline: none;
+        }
+
+        #send-btn,
+        #mic-btn {
+            background: var(--primary-color);
+            border: none;
+            color: white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        #send-btn:hover,
+        #mic-btn:hover {
+            background: #0056b3;
+        }
+
+        #mic-btn.is-recording {
+            background: #dc3545;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        #suggestions-area {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .suggestion-btn {
+            background: var(--suggestion-bg);
+            border: 1px solid var(--input-border);
+            color: var(--text-color);
+            padding: 6px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .suggestion-btn:hover {
+            background: var(--suggestion-hover-bg);
+            border-color: var(--primary-color);
+        }
+
+        .typing-indicator-wrapper {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            max-width: 75%;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--bot-msg-bg);
+            padding: 12px 16px;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--light-text-color);
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0s;
+        }
+
+        @keyframes typing {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+                opacity: 0.5;
+            }
+
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body id="vanta-bg">
+    <div class="chat-window">
+        <header>
+            <div class="header-left">
+                <h3>SafeCompanion.AI</h3>
+            </div>
+            <div class="header-center">
+                <select id="languageSelector" onchange="changeLanguage(this.value)" class="language-selector">
+                    <option value="en">English</option>
+                    <option value="hi">हिन्दी</option>
+                    <option value="mr">मराठी</option>
+                </select>
+            </div>
+            <div class="header-controls">
+                <button class="header-btn" onclick="clearChat()" title="Clear Chat"><i
+                        class="fas fa-trash-alt"></i></button>
+                <label class="theme-switcher">
+                    <input type="checkbox" id="theme-toggle">
+                    <span class="slider"></span>
+                </label>
+                <button class="header-btn" onclick="logout()" title="Logout"><i
+                        class="fas fa-sign-out-alt"></i></button>
+            </div>
+        </header>
+
+        <div id="chat-container"></div>
+
+        <div class="input-container">
+            <div id="input-area">
+                <input type="text" id="user-input" placeholder="Type your message..." />
+                <button id="send-btn" onclick="sendMessage()" title="Send Message"><i
+                        class="fas fa-paper-plane"></i></button>
+                <button id="mic-btn" title="Speak"><i class="fas fa-microphone"></i></button>
+            </div>
+            <div id="suggestions-area"></div>
+        </div>
+    </div>
+
+    <script>
+        // Simple bot responses (just text strings)
+        const botResponses = {
+            en: {
+                greetings: [
+                    "Hi there! 👋 How are you feeling today?",
+                    "Hello! 😊 It's nice to see you. What's on your mind?",
+                    "Hey! I'm here to listen. How can I help you today?"
+                ],
+                sadness: [
+                    "I'm sorry to hear that 😔. Remember that it's okay to not be okay. Do you want to talk about what's on your mind?",
+                    "I can sense you're going through a tough time. I'm here to listen without judgment. What would help you feel better right now?"
+                ],
+                happiness: [
+                    "That's wonderful to hear! 😊 What's making you feel so good?",
+                    "I love your positive energy! ✨ It's great to hear you're doing well. Want to share what's bringing you joy?"
+                ],
+                anxiety: [
+                    "It sounds like you're feeling overwhelmed. Let's try a simple breathing exercise together. Breathe in for 4 counts, hold for 4, and exhale for 6. I'm here with you.",
+                    "I understand that anxiety can feel really heavy sometimes. You're not alone in this. Would you like to try some grounding techniques or just talk?"
+                ],
+                goodbye: [
+                    "Take care of yourself! Remember, I'm here whenever you need someone to talk to 💙",
+                    "Goodbye for now! 🌟 Come back anytime you need a listening ear."
+                ],
+                default: [
+                    "That's interesting. Tell me more about that. I'm here to listen 💬",
+                    "Thanks for sharing that with me. How does that make you feel?"
+                ]
+            },
+            hi: {
+                greetings: [
+                    "नमस्ते! 👋 आज आप कैसा महसूस कर रहे हैं?",
+                    "हैलो! 😊 आपसे मिलकर अच्छा लगा। आपके मन में क्या है?",
+                    "नमस्कार! मैं यहाँ सुनने के लिए हूँ। आज आपकी कैसे मदद कर सकता हूँ?"
+                ],
+                sadness: [
+                    "यह सुनकर दुःख हुआ 😔। याद रखें कि परेशान होना सामान्य बात है। क्या आप अपने मन की बात कहना चाहेंगे?",
+                    "मैं समझ सकता हूँ कि आप कठिन समय से गुजर रहे हैं। मैं बिना किसी निर्णय के सुनने के लिए यहाँ हूँ।"
+                ],
+                happiness: [
+                    "यह सुनकर बहुत अच्छा लगा! 😊 आपको क्या इतना अच्छा महसूस करा रहा है?",
+                    "आपकी सकारात्मक ऊर्जा बहुत अच्छी है! ✨ आप अच्छा कर रहे हैं यह सुनकर खुशी हुई।"
+                ],
+                anxiety: [
+                    "लगता है आप बहुत परेशान हैं। चलिए एक सरल सांस लेने का अभ्यास करते हैं। 4 तक सांस लें, 4 तक रोकें और 6 में छोड़ें।",
+                    "मैं समझता हूँ कि चिंता कभी-कभी बहुत भारी लग सकती है। इसमें आप अकेले नहीं हैं।"
+                ],
+                goodbye: [
+                    "अपना ख्याल रखिए! याद रखें, जब भी आपको किसी से बात करने की जरूरत हो, मैं यहाँ हूँ 💙",
+                    "अभी के लिए अलविदा! 🌟 जब भी सुनने वाले की जरूरत हो तो वापस आइए।"
+                ],
+                default: [
+                    "यह दिलचस्प है। इसके बारे में और बताइए। मैं सुनने के लिए यहाँ हूँ 💬",
+                    "यह साझा करने के लिए धन्यवाद। इससे आपको कैसा लगता है?"
+                ]
+            },
+            mr: {
+                greetings: [
+                    "नमस्कार! 👋 आज तुम्ही कसे वाटत आहात?",
+                    "हॅलो! 😊 तुम्हाला भेटून आनंद झाला। तुमच्या मनात काय आहे?",
+                    "नमस्ते! मी ऐकण्यासाठी इथे आहे। आज तुमची कशी मदत करू शकतो?"
+                ],
+                sadness: [
+                    "हे ऐकून दुःख झाले 😔। लक्षात ठेवा की अस्वस्थ वाटणे सामान्य आहे। तुम्हाला तुमच्या मनातील गोष्टी सांगायच्या आहेत का?",
+                    "मी समजू शकतो की तुम्ही कठीण काळातून जात आहात। मी कोणत्याही निर्णयाशिवाय ऐकण्यासाठी इथे आहे।"
+                ],
+                happiness: [
+                    "हे ऐकून खूप आनंद झाला! 😊 तुम्हाला इतके चांगले का वाटते?",
+                    "तुमची सकारात्मक ऊर्जा खूप छान आहे! ✨ तुम्ही चांगले आहात हे ऐकून आनंद झाला।"
+                ],
+                anxiety: [
+                    "असे वाटते की तुम्ही खूप समस्यांमधून जात आहात। चला एक सोप्पा श्वासाचा व्यायाम करूया। ४ सेकंद श्वास घ्या, ४ सेकंद रोखा आणि ६ सेकंदात सोडा।",
+                    "मी समजतो की चिंता कधी कधी खूप जड वाटू शकते। यात तुम्ही एकटे नाही आहात।"
+                ],
+                goodbye: [
+                    "स्वतःची काळजी घ्या! गरज असेल तर मी इथे आहे 💙",
+                    "काळजी घ्या! 🌟 जेव्हा कोणाशी तरी बोलण्याची गरज वाटेल तेव्हा परत या।"
+                ],
+                default: [
+                    "हे मनोरंजक आहे। याबद्दल अधिक सांगा। मी ऐकण्यासाठी इथे आहे 💬",
+                    "तुम्ही हे सांगितले त्याबद्दल आभार। यावरून तुम्हाला कसे वाटते?"
+                ]
+            }
+        };
+
+        // Current language state
+        let currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
+
+        const chatContainer = document.getElementById("chat-container");
+        const userInput = document.getElementById("user-input");
+        const themeToggle = document.getElementById("theme-toggle");
+        const suggestionsArea = document.getElementById("suggestions-area");
+        const micBtn = document.getElementById("mic-btn");
+        let currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        let recognition;
+        let lastBotReply = "";
+
+        // Translation functions
+        function translatePage() {
+            // Update input placeholder based on language
+            if (userInput) {
+                const placeholders = {
+                    en: "Type your message...",
+                    hi: "अपना संदेश टाइप करें...",
+                    mr: "तुमचा संदेश टाइप करा..."
+                };
+                userInput.placeholder = placeholders[currentLanguage] || placeholders['en'];
+            }
+
+            // Update language selector
+            const languageSelector = document.getElementById('languageSelector');
+            if (languageSelector) {
+                languageSelector.value = currentLanguage;
+            }
+
+            // Update speech recognition language
+            if (recognition) {
+                const langMap = { en: 'en-US', hi: 'hi-IN', mr: 'mr-IN' };
+                recognition.lang = langMap[currentLanguage] || 'en-US';
+            }
+        }
+
+        function changeLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('preferredLanguage', lang);
+            translatePage();
+
+            // Add a welcome message in the new language
+            const responses = botResponses[lang] || botResponses['en'];
+            const welcomeMessage = responses.greetings[0];
+            addMessage(welcomeMessage, "bot");
+        }
+
+        // Theme handling
+        const currentTheme = localStorage.getItem("theme");
+        if (currentTheme === "dark") {
+            document.body.classList.add("dark-mode");
+            themeToggle.checked = true;
+        }
+        themeToggle.addEventListener("change", function () {
+            document.body.classList.toggle("dark-mode");
+            localStorage.setItem("theme", document.body.classList.contains("dark-mode") ? "dark" : "light");
+        });
+
+        // Initialize on page load
+        window.onload = () => {
+            if (!currentUser) {
+                window.location.href = "testlogin.html";
+                return;
+            }
+
+            // Initialize translation
+            translatePage();
+
+            // Use translated welcome message
+            const responses = botResponses[currentLanguage] || botResponses['en'];
+            const welcomeMessage = responses.greetings[0] || `Hello ${currentUser.username}! I'm your AI Companion, here to listen. How are you doing today?`;
+            addMessage(welcomeMessage, "bot");
+
+            userInput.focus();
+        };
+
+        userInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") sendMessage();
+        });
+
+        function addMessage(text, sender) {
+            const isBot = sender === 'bot';
+            const wrapper = document.createElement("div");
+            wrapper.classList.add("message-wrapper", isBot ? "bot-wrapper" : "user-wrapper");
+
+            const avatar = document.createElement("div");
+            avatar.classList.add("avatar");
+            const avatarContent = isBot ? `<i class="fas fa-robot"></i>` : (currentUser.username ? currentUser.username.charAt(0) : 'U');
+            avatar.innerHTML = avatarContent;
+
+            const messageContainer = document.createElement("div");
+            const msg = document.createElement("div");
+            msg.classList.add("message");
+            msg.textContent = text;
+
+            const timestamp = document.createElement("div");
+            timestamp.classList.add("timestamp");
+            timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const copyBtn = document.createElement("button");
+            copyBtn.classList.add("copy-btn");
+            copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+            copyBtn.title = "Copy";
+            copyBtn.onclick = () => copyToClipboard(text, copyBtn);
+
+            messageContainer.appendChild(msg);
+            messageContainer.appendChild(timestamp);
+            msg.appendChild(copyBtn);
+
+            if (isBot) {
+                const soundBtn = document.createElement("button");
+                soundBtn.classList.add("sound-btn");
+                soundBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+                soundBtn.title = "Listen";
+                soundBtn.onclick = () => speakText(text);
+                msg.appendChild(soundBtn);
+                lastBotReply = text;
+            }
+
+            wrapper.appendChild(avatar);
+            wrapper.appendChild(messageContainer);
+            chatContainer.appendChild(wrapper);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const wrapper = document.createElement("div");
+            wrapper.classList.add("typing-indicator-wrapper");
+
+            const avatar = document.createElement("div");
+            avatar.classList.add("avatar");
+            avatar.innerHTML = '<i class="fas fa-robot"></i>';
+            avatar.style.background = "var(--light-text-color)";
+            avatar.style.color = "white";
+
+            const indicator = document.createElement("div");
+            indicator.classList.add("typing-indicator");
+
+            for (let i = 0; i < 3; i++) {
+                const dot = document.createElement("div");
+                dot.classList.add("typing-dot");
+                indicator.appendChild(dot);
+            }
+
+            wrapper.appendChild(avatar);
+            wrapper.appendChild(indicator);
+            chatContainer.appendChild(wrapper);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.querySelector(".typing-indicator-wrapper");
+            if (indicator) indicator.remove();
+        }
+
+        function sendMessage(textFromSuggestion = null) {
+            const text = textFromSuggestion || userInput.value.trim();
+            if (text === "") return;
+
+            addMessage(text, "user");
+            if (!textFromSuggestion) userInput.value = "";
+            userInput.focus();
+            clearSuggestions();
+
+            showTypingIndicator();
+
+            setTimeout(() => {
+                hideTypingIndicator();
+                const response = getBotResponse(text);
+                addMessage(response, "bot");
+            }, 1200);
+        }
+
+        function getBotResponse(userText) {
+            const lower = userText.toLowerCase();
+            const responses = botResponses[currentLanguage] || botResponses['en'];
+
+            // Check for different types of messages
+            if (lower.includes("hello") || lower.includes("hi") || lower.includes("नमस्ते") || lower.includes("हैलो") || lower.includes("नमस्कार")) {
+                return responses.greetings[Math.floor(Math.random() * responses.greetings.length)];
+            }
+
+            if (lower.includes("sad") || lower.includes("down") || lower.includes("उदास") || lower.includes("दुखी") || lower.includes("परेशान") || lower.includes("दुःख")) {
+                return responses.sadness[Math.floor(Math.random() * responses.sadness.length)];
+            }
+
+            if (lower.includes("happy") || lower.includes("great") || lower.includes("good") || lower.includes("खुश") || lower.includes("अच्छा") || lower.includes("बेहतरीन") || lower.includes("चांगले") || lower.includes("आनंद")) {
+                return responses.happiness[Math.floor(Math.random() * responses.happiness.length)];
+            }
+
+            if (lower.includes("anxious") || lower.includes("worried") || lower.includes("stress") || lower.includes("चिंता") || lower.includes("परेशान") || lower.includes("टेंशन") || lower.includes("काळजी")) {
+                return responses.anxiety[Math.floor(Math.random() * responses.anxiety.length)];
+            }
+
+            if (lower.includes("bye") || lower.includes("goodbye") || lower.includes("अलविदा") || lower.includes("गुड बाई") || lower.includes("निरोप")) {
+                return responses.goodbye[Math.floor(Math.random() * responses.goodbye.length)];
+            }
+
+            return responses.default[Math.floor(Math.random() * responses.default.length)];
+        }
+
+        function displaySuggestions(suggestions) {
+            suggestions.forEach(s => {
+                const btn = document.createElement("button");
+                btn.textContent = s;
+                btn.classList.add("suggestion-btn");
+                btn.onclick = () => sendMessage(s);
+                suggestionsArea.appendChild(btn);
+            });
+        }
+
+        function clearSuggestions() {
+            suggestionsArea.innerHTML = "";
+        }
+
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                button.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => {
+                    button.innerHTML = '<i class="fas fa-copy"></i>';
+                }, 1500);
+            });
+        }
+
+        function clearChat() {
+            chatContainer.innerHTML = "";
+            const responses = botResponses[currentLanguage] || botResponses['en'];
+            const welcomeMessage = responses.greetings[Math.floor(Math.random() * responses.greetings.length)];
+            addMessage(welcomeMessage, "bot");
+        }
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            window.location.href = "testlogin.html";
+        }
+
+        // --- Voice Input (Speech-to-Text) ---
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+
+            recognition.onresult = (event) => {
+                const spokenText = event.results[0][0].transcript;
+                userInput.value = spokenText;
+                sendMessage();
+            };
+
+            recognition.onstart = () => {
+                micBtn.classList.add("is-recording");
+                micBtn.innerHTML = '<i class="fas fa-stop"></i>';
+            };
+
+            recognition.onend = () => {
+                micBtn.classList.remove("is-recording");
+                micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+            };
+
+            micBtn.addEventListener('click', () => {
+                if (micBtn.classList.contains('is-recording')) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
+            });
+        } else {
+            micBtn.disabled = true;
+            micBtn.title = "Speech recognition not supported in this browser.";
+        }
+
+        // --- Voice Output (Text-to-Speech) ---
+        function speakText(text) {
+            if (!text || speechSynthesis.speaking) return;
+
+            // Remove emoji before speaking
+            const emojiRegex = /([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g;
+            const textToSpeak = text.replace(emojiRegex, '').trim();
+
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            utterance.rate = 1;
+            utterance.pitch = 1;
+
+            // Set language based on current language
+            const voiceLangMap = { en: 'en-US', hi: 'hi-IN', mr: 'mr-IN' };
+            utterance.lang = voiceLangMap[currentLanguage] || 'en-US';
+
+            if (speechSynthesis.getVoices().length > 0) {
+                speechSynthesis.speak(utterance);
+            } else {
+                speechSynthesis.onvoiceschanged = () => {
+                    speechSynthesis.speak(utterance);
+                };
+            }
+        }
+
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.rings.min.js"></script>
+    <script>
+        VANTA.RINGS({
+            el: "#vanta-bg",
+            mouseControls: true,
+            touchControls: true,
+            gyroControls: false,
+            minHeight: 200.00,
+            minWidth: 200.00,
+            scale: 1.00,
+            scaleMobile: 1.00,
+            backgroundColor: 0x18191a,
+            color: 0x0d6efd
+        })
+    </script>
+
+</body>
+
+</html>
