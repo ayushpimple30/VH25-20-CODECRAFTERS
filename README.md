@@ -40,6 +40,37 @@ Designed to enable **secure, ethical, and private interactions** with built-in s
   * Separate app (`admin_app.py`)
   * View logs in a secure interface
   * Reset logs when needed
+ 
+
+
+🎥 Demo
+
+Here’s how SafeCompanion.AI looks in action:
+
+Chatbot Demo
+
+User enters a text message or uploads an image.
+
+Unsafe words/PII get redacted automatically.
+
+AI replies safely and can speak the answer (TTS).
+
+Dashboard updates in real-time with safety stats.
+
+Admin Tracker Demo
+
+Admin opens admin_app.py (on port 8502).
+
+Views logged activities with timestamps.
+
+Can reset logs with one click.
+
+
+<img width="1920" height="1080" alt="Screenshot (77)" src="https://github.com/user-attachments/assets/1e4f9633-aa01-49ca-a28b-9838912fd3d9" />
+
+<img width="1920" height="1080" alt="Screenshot (78)" src="https://github.com/user-attachments/assets/dbffa91f-222f-47c1-abc0-622bf8cdca98" />
+
+
 
 ---
 
