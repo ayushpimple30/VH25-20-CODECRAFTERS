@@ -1,168 +1,116 @@
 import os
-import re
 import streamlit as st
-from gtts import gTTS
-import tempfile
+from groq import Groq
 import pytesseract
 from PIL import Image
-import speech_recognition as sr
-from groq import Groq
-import sqlite3
-from datetime import datetime
 
 
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+from safety import apply_safety_filters
+from tts import speak_text
+from activity_logger import log_activity
 
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
-    st.error("⚠️ Missing GROQ_API_KEY. Please set it as env variable or hardcode for testing.")
+    st.error("⚠️ Missing GROQ_API_KEY. Please set it with: setx GROQ_API_KEY 'your_key_here'")
     st.stop()
 
 client = Groq(api_key=GROQ_API_KEY)
 
 
-def init_db():
-    conn = sqlite3.connect("logs.db")
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS activity_log (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT,
-                    input_type TEXT,
-                    user_input TEXT,
-                    ai_reply TEXT,
-                    flagged INTEGER,
-                    pii_hidden INTEGER
-                )''')
-    conn.commit()
-    conn.close()
+st.set_page_config(page_title="SafeCompanion.AI Prototype", layout="wide")
 
-def log_activity(input_type, user_input, ai_reply, flagged, pii_hidden):
-    conn = sqlite3.connect("logs.db")
-    c = conn.cursor()
-    c.execute("INSERT INTO activity_log (timestamp, input_type, user_input, ai_reply, flagged, pii_hidden) VALUES (?, ?, ?, ?, ?, ?)",
-              (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), input_type, user_input, ai_reply, int(flagged), int(pii_hidden)))
-    conn.commit()
-    conn.close()
-
-
-def apply_safety_filters(text: str):
-    flagged = False
-    pii_detected = False
-
-    if re.search(r"\b(stupid|kill|hate)\b", text, re.IGNORECASE):
-        flagged = True
-        text = "[filtered]"
-
-    if re.search(r"\d{10}", text):  
-        pii_detected = True
-        text = "[hidden-phone]"
-
-    return text, flagged, pii_detected
-
-
-def generate_reply(prompt: str):
-    try:
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-                {"role": "system", "content": "You are SafeCompanion.AI, a safe and helpful assistant."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=200
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        return f"⚠️ API Error: {e}"
-
-
-LANG_MAP = {
-    "English": "en",
-    "Hindi": "hi",
-    "Marathi": "mr",
-    "Tamil": "ta",
-    "Telugu": "te",
-    "Gujarati": "gu",
-    "Punjabi": "pa"
-}
-
-def speak_text(text, lang="en"):
-    tts = gTTS(text=text, lang=lang)
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-    tts.save(temp_file.name)
-    return temp_file.name
-
-
-def mic_input():
-    recognizer = sr.Recognizer()
-    mic = sr.Microphone()
-    with mic as source:
-        st.info("🎙️ Listening... Speak now")
-        audio = recognizer.listen(source)
-    try:
-        return recognizer.recognize_google(audio)
-    except:
-        return ""
-
-
-st.set_page_config(page_title="SafeCompanion.AI", layout="wide")
 st.title("🛡️ SafeCompanion.AI Prototype")
-st.caption("A safe, conversational AI prototype powered by Groq API with Text-to-Speech, Mic Input, Image Upload & Activity Logging.")
-
-
-init_db()
+st.caption("A safe, conversational AI prototype powered by Groq API with Guardrails, Text-to-Speech, Image Upload, and Activity Tracking.")
 
 
 st.sidebar.header("⚙️ Settings")
-language = st.sidebar.selectbox("🌐 Select Language for Speech Output", list(LANG_MAP.keys()))
-enable_tts = st.sidebar.checkbox("🔊 Enable Voice Replies", value=True)
-enable_mic = st.sidebar.checkbox("🎙️ Use Microphone Input", value=False)
+enable_tts = st.sidebar.checkbox("Enable Voice Replies")
+language = st.sidebar.selectbox("🌐 Select Language for Speech Output", ["English", "Hindi", "Marathi", "Tamil", "Telugu", "Gujarati", "Punjabi"])
 
 
-st.subheader("💬 Chat")
+def generate_reply(user_input: str) -> str:
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant", 
+            messages=[
+                {"role": "system", "content": "You are a safe AI assistant. Always reply politely, safely, and responsibly."},
+                {"role": "user", "content": user_input},
+            ],
+        )
 
-user_input = ""
-input_type = "text"
-
-if enable_mic:
-    if st.button("🎤 Speak"):
-        user_input = mic_input()
-        input_type = "mic"
-else:
-    user_input = st.text_input("Enter your message:")
-
-
-uploaded_image = st.file_uploader("📷 Upload an image (JPG/PNG)", type=["png", "jpg", "jpeg"])
-if uploaded_image:
-    image = Image.open(uploaded_image)
-    st.image(image, caption="Uploaded Image", use_container_width=True)
-
-    extracted_text = pytesseract.image_to_string(image)
-    if extracted_text.strip():
-        st.success("✅ Extracted text from image:")
-        st.write(extracted_text)
-        if not user_input:
-            user_input = extracted_text
-            input_type = "image"
+        if hasattr(response.choices[0].message, "content"):
+            return response.choices[0].message.content.strip()
+        elif isinstance(response.choices[0].message, dict):
+            return response.choices[0].message.get("content", "").strip()
+        else:
+            return "⚠️ Could not parse AI reply."
+    except Exception as e:
+        return f"⚠️ API Error: {str(e)}"
 
 
-if user_input:
-    st.markdown(f"🧑 You: {user_input}")
+def extract_text_from_image(uploaded_file):
+    try:
+        image = Image.open(uploaded_file)
+        return pytesseract.image_to_string(image)
+    except Exception as e:
+        return f"[OCR Error: {str(e)}]"
 
-    ai_reply = generate_reply(user_input)
-    ai_reply, flagged, pii_detected = apply_safety_filters(ai_reply)
 
-    st.markdown(f"🤖 **SafeCompanion.AI**: {ai_reply}")
+uploaded_file = st.file_uploader("📤 Or upload an image", type=["png", "jpg", "jpeg"])
+user_input = st.text_input("💬 Enter your message:")
 
-    if enable_tts and ai_reply.strip():
-        lang_code = LANG_MAP.get(language, "en")
-        audio_file = speak_text(ai_reply, lang=lang_code)
-        st.audio(audio_file, format="audio/mp3")
+if st.button("🚀 Send"):
+    if uploaded_file:
+        extracted_text = extract_text_from_image(uploaded_file)
+        st.write("📖 Extracted from Image:", extracted_text)
+        user_input = extracted_text
 
-  
-    log_activity(input_type, user_input, ai_reply, flagged, pii_detected)
+    if user_input.strip():
+        
+        clean_input, flagged_in, pii_in = apply_safety_filters(user_input)
+
+        if flagged_in or pii_in:
+            st.warning("⚠️ Your input contained unsafe or private details and was blocked.")
+            log_activity(user_input, "[BLOCKED]", flagged_in, pii_in, blocked=True)
+        else:
+           
+            ai_reply = generate_reply(clean_input)
+
+          
+            ai_reply, flagged_out, pii_out = apply_safety_filters(ai_reply)
+
+            st.markdown(f"🤖 **SafeCompanion.AI**: {ai_reply}")
+
+          
+            if enable_tts and ai_reply.strip():
+                audio_file = speak_text(ai_reply, lang="en")
+                st.audio(audio_file, format="audio/mp3")
+
+          
+            if "safe_count" not in st.session_state:
+                st.session_state.safe_count = 0
+                st.session_state.unsafe_count = 0
+                st.session_state.pii_count = 0
+
+            if flagged_out:
+                st.session_state.unsafe_count += 1
+            else:
+                st.session_state.safe_count += 1
+            if pii_out:
+                st.session_state.pii_count += 1
+
+            
+            log_activity(user_input, ai_reply, flagged_out, pii_out, blocked=False)
 
 
 st.subheader("📊 Safety Dashboard")
-st.write("✅ All activities are logged with timestamp (personal details hidden).")
+
+total = st.session_state.get("safe_count", 0) + st.session_state.get("unsafe_count", 0)
+
+if total > 0:
+    st.write(f"✅ {st.session_state.safe_count} safe interactions detected.")
+    st.write(f"⚠️ {st.session_state.unsafe_count} flagged as unsafe.")
+    st.write(f"🔒 {st.session_state.pii_count} private details hidden.")
+else:
+    st.info("No interactions yet.")
