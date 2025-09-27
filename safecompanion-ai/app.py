@@ -1,87 +1,152 @@
-import streamlit as st
-from transformers import pipeline
-from gtts import gTTS
-import re
-import base64
 import os
+import re
+import streamlit as st
+from gtts import gTTS
+import tempfile
+from groq import Groq
 
+# -------------------------------
+# Load API key
+# -------------------------------
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    st.error("⚠️ Missing GROQ_API_KEY. Please set it in .env or environment variables")
+    st.stop()
 
-@st.cache_resource
-def load_model():
-    return pipeline("text2text-generation", model="google/flan-t5-base")
+client = Groq(api_key=GROQ_API_KEY)
 
-model = load_model()
+# -------------------------------
+# Safety Filters
+# -------------------------------
+harmful_words = ["stupid", "idiot", "hate", "kill", "suicide", "die"]
+pii_patterns = [
+    r"\b\d{10}\b",               # Phone numbers
+    r"\b\d{16}\b",               # Credit card numbers
+    r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"  # Emails
+]
 
+def apply_safety_filters(user_input: str) -> (str, bool, bool):
+    """Apply harmful word filtering and mask PII."""
+    flagged = False
+    pii_detected = False
 
-def apply_safety_filters(user_input):
-    bad_words = ["stupid", "idiot", "fuck", "shit"]
-    for word in bad_words:
-        if word in user_input.lower():
-            return "[filtered]"
-    user_input = re.sub(r"\b\d{10,}\b", "[hidden-phone]", user_input)  # Hide phone
-    user_input = re.sub(r"\S+@\S+\.\S+", "[hidden-email]", user_input)  # Hide email
-    return user_input
+    # Replace harmful words
+    for word in harmful_words:
+        if re.search(rf"\b{word}\b", user_input, re.IGNORECASE):
+            user_input = re.sub(rf"\b{word}\b", "[filtered]", user_input, flags=re.IGNORECASE)
+            flagged = True
 
+    # Mask PII
+    for pattern in pii_patterns:
+        if re.search(pattern, user_input):
+            user_input = re.sub(pattern, "[hidden]", user_input)
+            pii_detected = True
 
-def check_math(user_input):
+    return user_input, flagged, pii_detected
+
+# -------------------------------
+# Groq AI Reply Generator
+# -------------------------------
+def generate_reply(user_input: str, model: str = "llama-3.1-8b-instant") -> str:
+    """Send query to Groq API with fallback models."""
+    fallback_models = [
+        "llama-3.1-8b-instant",
+        "llama-3.3-70b-versatile",
+        "deepseek-r1-distill-llama-70b",
+        "gemma2-9b-it",
+        "openai/gpt-oss-20b",
+        "openai/gpt-oss-120b",
+        "moonshotai/kimi-k2-instruct",
+        "allam-2-7b"
+    ]
+
+    for model_name in fallback_models:
+        try:
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[{"role": "user", "content": user_input}],
+                temperature=0.7,
+                max_tokens=256
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            st.warning(f"⚠️ Model {model_name} failed: {e}")
+            continue
+
+    return "⚠️ All fallback models failed."
+
+# -------------------------------
+# Text-to-Speech
+# -------------------------------
+def speak_text(text: str):
+    """Convert AI text reply to speech using gTTS."""
     try:
-        if re.match(r"^[0-9+\-*/(). ]+$", user_input):
-            return str(eval(user_input))
-    except:
-        return None
-    return None
+        tts = gTTS(text)
+        temp_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+        tts.save(temp_path.name)
+        st.audio(temp_path.name, format="audio/mp3")
+    except Exception as e:
+        st.error(f"⚠️ TTS Error: {e}")
 
-
-def generate_reply(user_input):
-    clean_input = apply_safety_filters(user_input)
-    if clean_input != user_input:
-        return clean_input
-
-    math_result = check_math(user_input)
-    if math_result is not None:
-        return math_result
-
-    
-    history_text = "\n".join([f"User: {h['user']}\nAI: {h['ai']}" for h in st.session_state["history"]])
-    prompt = f"{history_text}\nUser: {clean_input}\nAI:"
-
-    response = model(prompt, max_length=150, do_sample=True, temperature=0.7)[0]['generated_text']
-    return response.strip()
-
-
-def text_to_speech(text, filename="tts_output.mp3"):
-    tts = gTTS(text=text, lang='en')
-    tts.save(filename)
-    with open(filename, "rb") as f:
-        audio_bytes = f.read()
-    b64 = base64.b64encode(audio_bytes).decode()
-    return f'<audio autoplay controls><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>'
-
+# -------------------------------
+# Streamlit UI
+# -------------------------------
+st.set_page_config(page_title="SafeCompanion.AI", page_icon="🛡️")
 
 st.title("🛡️ SafeCompanion.AI Prototype")
-st.write("A safe, conversational AI prototype with Text-to-Speech and Memory")
+st.write("A safe, conversational AI prototype powered by Groq API with Text-to-Speech.")
 
+# Enable Text-to-Speech
+enable_tts = st.checkbox("🔊 Enable Text-to-Speech")
 
+# Initialize state
 if "history" not in st.session_state:
-    st.session_state["history"] = []
+    st.session_state.history = []
+if "safe_count" not in st.session_state:
+    st.session_state.safe_count = 0
+if "unsafe_count" not in st.session_state:
+    st.session_state.unsafe_count = 0
+if "pii_count" not in st.session_state:
+    st.session_state.pii_count = 0
 
-enable_tts = st.checkbox("Enable Voice")
-
+# Chat input
 st.subheader("💬 Chat")
 user_input = st.text_input("Enter your message:")
 
 if user_input:
-    st.markdown(f"👤 You: {user_input}")
-    ai_reply = generate_reply(user_input)
+    clean_input, flagged, pii_detected = apply_safety_filters(user_input)
+    ai_reply = generate_reply(clean_input)
 
-    
-    st.session_state["history"].append({"user": user_input, "ai": ai_reply})
+    # Show conversation
+    st.markdown(f"👤 **You:** {user_input}")
+    st.markdown(f"🤖 **SafeCompanion.AI:** {ai_reply}")
 
-    st.markdown(f"🤖 SafeCompanion.AI: {ai_reply}")
+    # Play TTS
+    if enable_tts:
+        speak_text(ai_reply)
 
-    if enable_tts and ai_reply not in ["[filtered]", "[hidden-phone]", "[hidden-email]"]:
-        st.markdown(text_to_speech(ai_reply), unsafe_allow_html=True)
+    # Update safety stats
+    if flagged:
+        st.session_state.unsafe_count += 1
+    else:
+        st.session_state.safe_count += 1
+    if pii_detected:
+        st.session_state.pii_count += 1
 
+    # Save history
+    st.session_state.history.append({"user": user_input, "ai": ai_reply})
 
+# -------------------------------
+# Safety Dashboard
+# -------------------------------
 st.subheader("📊 Safety Dashboard")
-st.write(f"✅ {len(st.session_state['history'])} safe interactions detected.")
+total = st.session_state.safe_count + st.session_state.unsafe_count
+if total > 0:
+    safe_percent = (st.session_state.safe_count / total) * 100
+    unsafe_percent = (st.session_state.unsafe_count / total) * 100
+else:
+    safe_percent, unsafe_percent = 0, 0
+
+st.write(f"✅ {safe_percent:.0f}% safe interactions detected.")
+st.write(f"⚠️ {unsafe_percent:.0f}% flagged as unsafe.")
+st.write(f"🔒 {st.session_state.pii_count} private details hidden.")
