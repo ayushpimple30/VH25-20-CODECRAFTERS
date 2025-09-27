@@ -1,78 +1,45 @@
 # 🛡️ SafeCompanion.AI
 
-**SafeCompanion.AI** is an AI-powered chatbot designed to provide **safe, supportive, and responsible interactions**.
-It is built as part of the **VCET Hackathon 2025 (Security Domain)** with the goal of designing **guardrails for AI companions**.
+A **safe conversational AI prototype** powered by **Groq API** with strong **guardrails**.
+Designed to enable **secure, ethical, and private interactions** with built-in safety features.
 
 ---
 
 ## ✨ Features
 
-* 🔍 **Input Filtering** – blocks profanity, toxicity, PII (phone numbers, emails, etc.)
-* ✅ **Output Validation** – prevents hallucinations, ensures safe and factual responses
-* 🛡️ **Privacy Protection** – sensitive data is scrubbed and hidden automatically
-* 🔑 **Role-Based Access** – supports access controls and policies
-* 📜 **Audit Trails** – strong logging and monitoring of all interactions
-* 💬 **Friendly Companion** – conversational, empathetic, and supportive AI
+* 🔒 **Guardrails**
 
----
+  * Input filtering: toxicity, profanity, self-harm, topic restrictions
+  * Output validation: prevent hallucinations, enforce safe responses
+  * PII detection & scrubbing (emails, phone numbers, etc.)
 
-## 🚀 Getting Started
+* 🗣️ **Conversational AI**
 
-### 1. Clone the Repository
+  * Text-based chat with Groq LLMs
+  * Text-to-Speech (TTS) in multiple languages
+  * Optional microphone input for voice queries
 
-```bash
-git clone https://github.com/ayushpimple30/VH25-20-CODECRAFTERS.git
-cd VH25-20-CODECRAFTERS
-```
+* 🖼️ **Image Upload**
 
-### 2. Create and Activate a Virtual Environment
+  * Upload images (JPG/PNG)
+  * Extract text using OCR (Tesseract)
 
-```bash
-python -m venv venv
-venv\Scripts\activate   # Windows
-# or
-source venv/bin/activate   # Mac/Linux
-```
+* 📊 **Safety Dashboard**
 
-### 3. Install Dependencies
+  * Track safe/unsafe interactions
+  * Monitor PII redaction events
 
-```bash
-pip install -r requirements.txt
-```
+* 📜 **Activity Logging**
 
-### 4. Add API Keys
+  * Every interaction stored in `activity_log.csv`
+  * Logs include timestamp, input, output, safety flags
+  * Audit-ready for compliance
 
-Create a `.env` file in the project root and add your Hugging Face API key:
+* 🛠️ **Admin Dashboard**
 
-```
-HF_API_KEY=your_huggingface_api_key
-```
-
-### 5. Run the App
-
-```bash
-streamlit run app.py
-```
-
----
-
-## 📸 Demo
-
-<img width="1920" height="1080" alt="Screenshot (6)" src="https://github.com/user-attachments/assets/e1f4c3f9-0b4a-4586-9b43-287de04241c5" />
-
-
-```markdown
-![SafeCompanion.AI Screenshot](assets/screenshot.png)
-```
-
----
-
-## 🏆 Hackathon Context
-
-This project was developed for the **VCET Hackathon 2025 (Security Domain)**.
-The challenge: *“Develop guardrails for AI models used in AI companions.”*
-
-SafeCompanion.AI directly addresses this by combining **LLM-powered conversation** with **robust safety filters**.
+  * Separate app (`admin_app.py`)
+  * View logs in a secure interface
+  * Reset logs when needed
 
 ---
 
@@ -80,14 +47,102 @@ SafeCompanion.AI directly addresses this by combining **LLM-powered conversation
 
 ```
 safecompanion-ai/
-│-- app.py             # Main Streamlit app
-│-- requirements.txt   # Dependencies
-│-- .env               # API keys (ignored in GitHub)
-│-- .gitignore         # Ignore rules
-│-- LICENSE            # MIT License
+│
+├── app.py                # Main chatbot app
+├── admin_app.py          # Admin tracker dashboard
+├── safety.py             # Guardrails: input/output filtering
+├── tts.py                # Text-to-Speech helper
+├── activity_logger.py    # Logging system
+├── activity_log.csv      # Interaction logs (auto-generated)
+├── requirements.txt      # Dependencies
+└── README.md             # Project documentation
 ```
 
 ---
+
+## ⚙️ Setup & Installation
+
+### 1. Clone Repo
+
+```bash
+git clone https://github.com/YOUR_USERNAME/safecompanion-ai.git
+cd safecompanion-ai
+```
+
+### 2. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Set Groq API Key
+
+```bash
+setx GROQ_API_KEY "your_api_key_here"   # Windows
+export GROQ_API_KEY="your_api_key_here" # macOS/Linux
+```
+
+---
+
+## 🚀 Usage
+
+### Run the Chatbot
+
+```bash
+streamlit run app.py
+```
+
+### Run the Admin Tracker (separate port)
+
+```bash
+streamlit run admin_app.py --server.port 8502
+```
+
+---
+
+## 🗑️ Reset Activity Logs
+
+* Open `admin_app.py` in browser → Click **"🗑️ Reset Logs"**
+* Or manually clear `activity_log.csv`
+
+---
+
+## 🛡️ Guardrails in Action
+
+* **Profanity/Toxicity:** `fuck you` → `[REDACTED] you`
+* **Self-Harm:** `I want to kill myself` → `I want to [REDACTED-SELF-HARM]`
+* **PII:**
+
+  * `Email me at test@example.com` → `Email me at [REDACTED-PII]`
+  * `Call me at 9876543210` → `Call me at [REDACTED-PII]`
+
+---
+
+## 📊 Safety Dashboard Example
+
+* ✅ 12 safe interactions detected
+* ⚠️ 3 flagged as unsafe
+* 🔒 2 private details hidden
+
+---
+
+## 🔮 Future Improvements
+
+* Role-based access control for admins
+* More advanced PII detection (names, addresses)
+* Better contextual toxicity detection (via ML model)
+* Secure deployment with HTTPS & user authentication
+
+---
+
+## 👨‍💻 Authors
+
+* **Ayush Pimple** – Project Developer
+
+---
+
+Do you want me to also create a **`.gitignore`** so your `activity_log.csv` and temporary audio files aren’t pushed to GitHub?
+
 
 ## 📜 License
 
