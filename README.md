@@ -21,8 +21,8 @@ It is built as part of the **VCET Hackathon 2025 (Security Domain)** with the go
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/ayushpimple30/safecompanion-ai.git
-cd safecompanion-ai
+git clone https://github.com/ayushpimple30/VH25-20-CODECRAFTERS.git
+cd VH25-20-CODECRAFTERS
 ```
 
 ### 2. Create and Activate a Virtual Environment
