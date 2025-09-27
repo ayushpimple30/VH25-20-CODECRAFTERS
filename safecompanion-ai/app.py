@@ -1,121 +1,106 @@
-# app.py
 import streamlit as st
-from detoxify import Detoxify
-import re
-import spacy
 from transformers import pipeline
-from dotenv import load_dotenv
+import re
 
-
-load_dotenv()
-
-st.set_page_config(page_title="SafeCompanion.AI", page_icon="🛡️")
-st.title("🛡️ SafeCompanion.AI Prototype")
-
-
-nlp = spacy.load("en_core_web_sm")
-
-
-generator = pipeline("text2text-generation", model="google/flan-t5-base")
-
-
-toxicity_check = Detoxify("original")
-
-
-CRISIS_KEYWORDS = [
-    "worthless", "suicide", "kill myself",
-    "end my life", "harm myself", "self harm",
-    "depressed", "i want to die"
+# --------------------------
+# Safety Filters
+# --------------------------
+BAD_WORDS = {"fuck", "stupid", "idiot", "bitch", "kill", "suicide"}
+PII_PATTERNS = [
+    r"\b\d{10}\b",  # phone number
+    r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",  # email
 ]
 
+def clean_input(user_input: str) -> str:
+    # Block harmful words
+    for bad in BAD_WORDS:
+        if bad in user_input.lower():
+            return "[Content removed for safety]"
+    
+    # Redact PII
+    for pattern in PII_PATTERNS:
+        user_input = re.sub(pattern, "[REDACTED]", user_input)
+    
+    return user_input
 
-PROFANITY_WORDS = ["badword", "fuck", "shit", "bitch"]
+# --------------------------
+# Load Models
+# --------------------------
+@st.cache_resource
+def load_model(model_choice):
+    return pipeline("text2text-generation", model=model_choice)
 
-def contains_profanity(text: str) -> bool:
-    return re.search(r"\b(" + "|".join(PROFANITY_WORDS) + r")\b", text.lower()) is not None
+# --------------------------
+# Reply Generator
+# --------------------------
+def generate_reply(model, history, user_input):
+    # Math check
+    if re.match(r"^\d+\s*[\+\-\*/]\s*\d+$", user_input):
+        try:
+            result = eval(user_input)
+            return f"The result is {result}"
+        except Exception:
+            return "I couldn’t calculate that safely."
+    
+    # Prepare context
+    context = " ".join([f"User: {u} AI: {a}" for u, a in history[-5:]])
+    prompt = f"{context} User: {user_input} AI:"
+    
+    # Generate
+    response = model(prompt, max_length=150, do_sample=True, temperature=0.7)[0]['generated_text']
+    
+    # Clean response
+    response = response.split("AI:")[-1].strip()
+    
+    return response
 
-def is_toxic(text: str) -> bool:
-    return toxicity_check.predict(text)["toxicity"] > 0.7
+# --------------------------
+# Streamlit App
+# --------------------------
+st.set_page_config(page_title="SafeCompanion.AI", page_icon="🛡️", layout="wide")
 
-def is_crisis(text: str) -> bool:
-    return any(keyword in text.lower() for keyword in CRISIS_KEYWORDS)
+st.title("🛡️ SafeCompanion.AI Prototype")
+st.caption("A safe, conversational AI prototype powered by Hugging Face.")
 
-def scrub_pii(text: str) -> (str, bool):
-    """Detect and redact PII, return cleaned text and flag if redaction happened"""
-    doc = nlp(text)
-    redacted = text
-    pii_found = False
-    for ent in doc.ents:
-        if ent.label_ in ["PERSON", "GPE", "ORG", "CARDINAL", "DATE", "TIME", "MONEY"]:
-            redacted = redacted.replace(ent.text, "[REDACTED]")
-            pii_found = True
-    if re.search(r"\b[\w.%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", redacted):
-        redacted = re.sub(r"\b[\w.%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", "[EMAIL REDACTED]", redacted)
-        pii_found = True
-    if re.search(r"\b\d{10}\b", redacted):
-        redacted = re.sub(r"\b\d{10}\b", "[PHONE REDACTED]", redacted)
-        pii_found = True
-    return redacted, pii_found
+model_choice = st.sidebar.selectbox(
+    "Choose AI Model",
+    ["google/flan-t5-base", "facebook/blenderbot-400M-distill"]
+)
 
-def clean_response(text: str) -> str:
-    """Clean AI output: remove spammy symbols, links, and repetitions"""
-    text = re.sub(r"[\:\)\]\(]{2,}", " ", text)      
-    text = re.sub(r"\d{4,}", "", text)                
-    text = re.sub(r"http\S+|www\.\S+", "", text)      
-    text = re.sub(r"address\:.*", "", text)
-    text = re.sub(r"([!?.])\1{2,}", r"\1", text)     
+# Load chosen model
+model = load_model(model_choice)
 
-    sentences = re.split(r'(?<=[.!?]) +', text)
-    sentences = [s.strip() for s in sentences if len(s.strip()) > 2]
-
-    if not sentences:
-        return "I'm here to chat with you. How are you feeling today?"
-
-    return " ".join(sentences[:3]).strip()
-
-def ask_ai(prompt: str) -> str:
-    """Send input to Flan-T5 and return cleaned response"""
-    try:
-        wrapped = f"The user said: '{prompt}'. Reply in a supportive and conversational way."
-        result = generator(
-            wrapped,
-            max_length=150,
-            min_length=20,
-            do_sample=True,
-            temperature=0.7,
-            top_p=0.9,
-            repetition_penalty=2.0
-        )
-        return clean_response(result[0]["generated_text"])
-    except Exception as e:
-        return f"⚠️ AI model error: {str(e)}"
-
+if "history" not in st.session_state:
+    st.session_state["history"] = []
+if "safe_count" not in st.session_state:
+    st.session_state["safe_count"] = 0
+if "unsafe_count" not in st.session_state:
+    st.session_state["unsafe_count"] = 0
 
 user_input = st.text_input("Enter your message:")
 
 if user_input:
-    clean_input, pii_flag = scrub_pii(user_input)
-    ai_response = ask_ai(clean_input)
+    clean_user_input = clean_input(user_input)
 
-   
-    if not ai_response or len(ai_response.split()) < 3:
-        ai_response = "I'm here to chat with you. How are you feeling today?"
-
+    if clean_user_input == "[Content removed for safety]":
+        ai_reply = "⚠️ That message was blocked for safety reasons."
+        st.session_state["unsafe_count"] += 1
+    else:
+        ai_reply = generate_reply(model, st.session_state["history"], clean_user_input)
+        st.session_state["safe_count"] += 1
     
-    if contains_profanity(user_input):
-        ai_response = "⚠️ I noticed some harsh language. Let's try to keep things kind 🙂. " + ai_response
+    st.session_state["history"].append((user_input, ai_reply))
+    
+    st.write(f"👤 You: {user_input}")
+    st.write(f"🤖 SafeCompanion.AI: {ai_reply}")
 
-    if is_toxic(user_input):
-        ai_response = "⚠️ Your message sounded a bit toxic. I’ll still respond kindly: " + ai_response
+# --------------------------
+# Safety Dashboard
+# --------------------------
+st.subheader("📊 Safety Dashboard")
+total = st.session_state["safe_count"] + st.session_state["unsafe_count"]
+safe_pct = (st.session_state["safe_count"] / total) * 100 if total > 0 else 0
+unsafe_pct = 100 - safe_pct
 
-    if is_crisis(user_input):
-        ai_response = ("⚠️ It sounds like you're going through something serious. "
-                       "You're not alone — please reach out to someone you trust or call a helpline for support. "
-                       + " Here's me still listening: " + ai_response)
-
-    if pii_flag:
-        ai_response = "ℹ️ For privacy, I’ve hidden sensitive details. " + ai_response
-
-   
-    st.write("✅ Safe message accepted.")
-    st.write("AI Response:", ai_response)
+st.metric("✅ Safe Interactions", f"{safe_pct:.0f}%")
+st.metric("⚠️ Unsafe Interactions", f"{unsafe_pct:.0f}%")
