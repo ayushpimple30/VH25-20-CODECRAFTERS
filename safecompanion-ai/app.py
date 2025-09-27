@@ -1,106 +1,88 @@
 import streamlit as st
 from transformers import pipeline
+from gtts import gTTS
 import re
+import os
+import base64
 
-# --------------------------
-# Safety Filters
-# --------------------------
-BAD_WORDS = {"fuck", "stupid", "idiot", "bitch", "kill", "suicide"}
-PII_PATTERNS = [
-    r"\b\d{10}\b",  # phone number
-    r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",  # email
-]
+# Load model
+@st.cache_resource
+def load_model():
+    return pipeline("text2text-generation", model="google/flan-t5-base")
 
-def clean_input(user_input: str) -> str:
+model = load_model()
+
+# Safety filter function
+def apply_safety_filters(user_input):
     # Block harmful words
-    for bad in BAD_WORDS:
-        if bad in user_input.lower():
-            return "[Content removed for safety]"
-    
-    # Redact PII
-    for pattern in PII_PATTERNS:
-        user_input = re.sub(pattern, "[REDACTED]", user_input)
-    
+    bad_words = ["stupid", "idiot", "fuck", "shit"]
+    for word in bad_words:
+        if word in user_input.lower():
+            return "[filtered]"
+
+    # Hide phone numbers
+    user_input = re.sub(r"\b\d{10,}\b", "[hidden-phone]", user_input)
+
+    # Hide emails
+    user_input = re.sub(r"\S+@\S+\.\S+", "[hidden-email]", user_input)
+
     return user_input
 
-# --------------------------
-# Load Models
-# --------------------------
-@st.cache_resource
-def load_model(model_choice):
-    return pipeline("text2text-generation", model=model_choice)
+# Math detection
+def check_math(user_input):
+    try:
+        if re.match(r"^[0-9+\-*/(). ]+$", user_input):
+            return str(eval(user_input))
+    except:
+        return None
+    return None
 
-# --------------------------
-# Reply Generator
-# --------------------------
-def generate_reply(model, history, user_input):
-    # Math check
-    if re.match(r"^\d+\s*[\+\-\*/]\s*\d+$", user_input):
-        try:
-            result = eval(user_input)
-            return f"The result is {result}"
-        except Exception:
-            return "I couldn’t calculate that safely."
-    
-    # Prepare context
-    context = " ".join([f"User: {u} AI: {a}" for u, a in history[-5:]])
-    prompt = f"{context} User: {user_input} AI:"
-    
-    # Generate
-    response = model(prompt, max_length=150, do_sample=True, temperature=0.7)[0]['generated_text']
-    
-    # Clean response
-    response = response.split("AI:")[-1].strip()
-    
+# Generate AI reply
+def generate_reply(user_input):
+    # First check filters
+    clean_input = apply_safety_filters(user_input)
+
+    if clean_input != user_input:
+        return clean_input
+
+    # Check math
+    math_result = check_math(user_input)
+    if math_result is not None:
+        return math_result
+
+    # Normal AI response
+    response = model(clean_input, max_length=100, do_sample=True)[0]['generated_text']
     return response
 
-# --------------------------
-# Streamlit App
-# --------------------------
-st.set_page_config(page_title="SafeCompanion.AI", page_icon="🛡️", layout="wide")
+# Text to Speech function
+def text_to_speech(text, filename="tts_output.mp3"):
+    tts = gTTS(text=text, lang='en')
+    tts.save(filename)
+    with open(filename, "rb") as f:
+        audio_bytes = f.read()
+    b64 = base64.b64encode(audio_bytes).decode()
+    return f'<audio autoplay controls><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>'
 
+# Streamlit UI
 st.title("🛡️ SafeCompanion.AI Prototype")
-st.caption("A safe, conversational AI prototype powered by Hugging Face.")
+st.write("A safe, conversational AI prototype with Text-to-Speech")
 
-model_choice = st.sidebar.selectbox(
-    "Choose AI Model",
-    ["google/flan-t5-base", "facebook/blenderbot-400M-distill"]
-)
+# TTS toggle
+enable_tts = st.checkbox("Enable Voice")
 
-# Load chosen model
-model = load_model(model_choice)
-
-if "history" not in st.session_state:
-    st.session_state["history"] = []
-if "safe_count" not in st.session_state:
-    st.session_state["safe_count"] = 0
-if "unsafe_count" not in st.session_state:
-    st.session_state["unsafe_count"] = 0
-
+# Chat
+st.subheader("💬 Chat")
 user_input = st.text_input("Enter your message:")
 
 if user_input:
-    clean_user_input = clean_input(user_input)
+    st.markdown(f"👤 You: {user_input}")
+    ai_reply = generate_reply(user_input)
+    st.markdown(f"🤖 SafeCompanion.AI: {ai_reply}")
 
-    if clean_user_input == "[Content removed for safety]":
-        ai_reply = "⚠️ That message was blocked for safety reasons."
-        st.session_state["unsafe_count"] += 1
-    else:
-        ai_reply = generate_reply(model, st.session_state["history"], clean_user_input)
-        st.session_state["safe_count"] += 1
-    
-    st.session_state["history"].append((user_input, ai_reply))
-    
-    st.write(f"👤 You: {user_input}")
-    st.write(f"🤖 SafeCompanion.AI: {ai_reply}")
+    # Voice playback if enabled
+    if enable_tts and ai_reply not in ["[filtered]", "[hidden-phone]", "[hidden-email]"]:
+        st.markdown(text_to_speech(ai_reply), unsafe_allow_html=True)
 
-# --------------------------
 # Safety Dashboard
-# --------------------------
 st.subheader("📊 Safety Dashboard")
-total = st.session_state["safe_count"] + st.session_state["unsafe_count"]
-safe_pct = (st.session_state["safe_count"] / total) * 100 if total > 0 else 0
-unsafe_pct = 100 - safe_pct
-
-st.metric("✅ Safe Interactions", f"{safe_pct:.0f}%")
-st.metric("⚠️ Unsafe Interactions", f"{unsafe_pct:.0f}%")
+st.write("✅ Harmful words or private info are automatically filtered.")
