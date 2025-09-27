@@ -10,14 +10,10 @@ from groq import Groq
 import sqlite3
 from datetime import datetime
 
-# -------------------------------
-# Configure Tesseract path (Windows)
-# -------------------------------
+
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-# -------------------------------
-# Load API key
-# -------------------------------
+
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     st.error("⚠️ Missing GROQ_API_KEY. Please set it as env variable or hardcode for testing.")
@@ -25,9 +21,7 @@ if not GROQ_API_KEY:
 
 client = Groq(api_key=GROQ_API_KEY)
 
-# -------------------------------
-# Database Setup
-# -------------------------------
+
 def init_db():
     conn = sqlite3.connect("logs.db")
     c = conn.cursor()
@@ -51,9 +45,7 @@ def log_activity(input_type, user_input, ai_reply, flagged, pii_hidden):
     conn.commit()
     conn.close()
 
-# -------------------------------
-# Safety Filters
-# -------------------------------
+
 def apply_safety_filters(text: str):
     flagged = False
     pii_detected = False
@@ -62,15 +54,13 @@ def apply_safety_filters(text: str):
         flagged = True
         text = "[filtered]"
 
-    if re.search(r"\d{10}", text):  # detect phone-like numbers
+    if re.search(r"\d{10}", text):  
         pii_detected = True
         text = "[hidden-phone]"
 
     return text, flagged, pii_detected
 
-# -------------------------------
-# Generate AI Reply
-# -------------------------------
+
 def generate_reply(prompt: str):
     try:
         response = client.chat.completions.create(
@@ -86,9 +76,7 @@ def generate_reply(prompt: str):
     except Exception as e:
         return f"⚠️ API Error: {e}"
 
-# -------------------------------
-# Text-to-Speech
-# -------------------------------
+
 LANG_MAP = {
     "English": "en",
     "Hindi": "hi",
@@ -105,9 +93,7 @@ def speak_text(text, lang="en"):
     tts.save(temp_file.name)
     return temp_file.name
 
-# -------------------------------
-# Microphone Input
-# -------------------------------
+
 def mic_input():
     recognizer = sr.Recognizer()
     mic = sr.Microphone()
@@ -119,25 +105,21 @@ def mic_input():
     except:
         return ""
 
-# -------------------------------
-# Streamlit UI
-# -------------------------------
+
 st.set_page_config(page_title="SafeCompanion.AI", layout="wide")
 st.title("🛡️ SafeCompanion.AI Prototype")
 st.caption("A safe, conversational AI prototype powered by Groq API with Text-to-Speech, Mic Input, Image Upload & Activity Logging.")
 
-# Init DB
+
 init_db()
 
-# Sidebar settings
+
 st.sidebar.header("⚙️ Settings")
 language = st.sidebar.selectbox("🌐 Select Language for Speech Output", list(LANG_MAP.keys()))
 enable_tts = st.sidebar.checkbox("🔊 Enable Voice Replies", value=True)
 enable_mic = st.sidebar.checkbox("🎙️ Use Microphone Input", value=False)
 
-# -------------------------------
-# Chat Input
-# -------------------------------
+
 st.subheader("💬 Chat")
 
 user_input = ""
@@ -150,9 +132,7 @@ if enable_mic:
 else:
     user_input = st.text_input("Enter your message:")
 
-# -------------------------------
-# Image Upload
-# -------------------------------
+
 uploaded_image = st.file_uploader("📷 Upload an image (JPG/PNG)", type=["png", "jpg", "jpeg"])
 if uploaded_image:
     image = Image.open(uploaded_image)
@@ -166,9 +146,7 @@ if uploaded_image:
             user_input = extracted_text
             input_type = "image"
 
-# -------------------------------
-# Process Input
-# -------------------------------
+
 if user_input:
     st.markdown(f"🧑 You: {user_input}")
 
@@ -182,11 +160,9 @@ if user_input:
         audio_file = speak_text(ai_reply, lang=lang_code)
         st.audio(audio_file, format="audio/mp3")
 
-    # Log user activity (safe only, without PII)
+  
     log_activity(input_type, user_input, ai_reply, flagged, pii_detected)
 
-# -------------------------------
-# Safety Dashboard
-# -------------------------------
+
 st.subheader("📊 Safety Dashboard")
 st.write("✅ All activities are logged with timestamp (personal details hidden).")
