@@ -179,13 +179,3 @@ Do you want me to also create a **`.gitignore`** so your `activity_log.csv` and 
 
 This project is licensed under the **MIT License** – see the [LICENSE](LICENSE) file for details.
 
----
-
-## 👨‍💻 Team
-
-**Team CodeCrafters (VH25-20)**
-
-* Ayush Pimple
-* Shivanshu
-* Harsh
-* Shervin
